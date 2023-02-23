@@ -1,6 +1,5 @@
 import KoaRouter from "koa-router";
 import query from "../models/MySQL"; //引入MySQL数据库
-import JWT from "../middlewares/JWT";
 import * as crypto from "crypto";
 import { formatParamStructure } from "../utils";
 
@@ -9,11 +8,6 @@ router.prefix("/userInfo");
 
 // 获取职工信息
 router.get("/getEmployee", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(403, "无权限查询！");
-    return;
-  }
   let usermark = ctx.request.query.usermark;
   let role = ctx.request.query.role;
   let pageSize: any = ctx.request.query.pageSize;
@@ -70,11 +64,6 @@ router.get("/getEmployee", async (ctx, next) => {
 
 // 删除职工信息
 router.delete("/deleteEmployee", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(403, "无权限！");
-    return;
-  }
   let usermark = ctx.request.body.usermark;
   let result = (await query(`update employee set state = 0 where usermark = '${usermark}'`)) as any;
   if (result.changedRows == 1) {
@@ -86,11 +75,6 @@ router.delete("/deleteEmployee", async (ctx, next) => {
 
 // 添加职工信息
 router.post("/addEmployee", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(403, "无权限！");
-    return;
-  }
   const date = new Date();
   let usermark =
     "E" +
@@ -118,11 +102,6 @@ router.post("/addEmployee", async (ctx, next) => {
 
 // 修改职工信息
 router.put("/updateEmployee", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(403, "无权限！");
-    return;
-  }
   let usermark = ctx.request.body.usermark;
   let name = ctx.request.body.name;
   let sex = ctx.request.body.sex;
@@ -147,11 +126,6 @@ router.put("/updateEmployee", async (ctx, next) => {
 
 // 获取学生信息
 router.get("/getStudent", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(403, "无权限查询！");
-    return;
-  }
   let usermark = ctx.request.query.usermark;
   let name = ctx.request.query.name;
   let college = ctx.request.query.college;
@@ -210,11 +184,6 @@ router.get("/getStudent", async (ctx, next) => {
 
 // 删除学生信息
 router.delete("/deleteStudent", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(403, "无权限！");
-    return;
-  }
   let usermark = ctx.request.body.usermark;
   let result = (await query(`update student set state = 0 where usermark = '${usermark}'`)) as any;
   if (result.changedRows == 1) {
@@ -226,11 +195,6 @@ router.delete("/deleteStudent", async (ctx, next) => {
 
 // 修改学生信息
 router.put("/updateStudent", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(403, "无权限！");
-    return;
-  }
   let usermark = ctx.request.body.usermark;
   let name = ctx.request.body.name;
   let sex = ctx.request.body.sex;
@@ -265,11 +229,6 @@ router.put("/updateStudent", async (ctx, next) => {
 
 // 添加学生
 router.post("/addStudent", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(403, "无权限！");
-    return;
-  }
   let name = ctx.request.body.name;
   let sex = ctx.request.body.sex;
   let telephone = ctx.request.body.telephone;

@@ -103,11 +103,6 @@ const getUserAuthority = async (role: string, usermark: string) => {
 
 // 查找权限
 router.get("/getAuthority", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(400, "无权限查询！");
-    return;
-  }
   let result = (await query(`SELECT * from authority`)) as Array<any>;
   let authority: Array<any> = [];
   result.forEach((item: any) => {
@@ -122,11 +117,6 @@ router.get("/getAuthority", async (ctx, next) => {
 
 // 增加权限
 router.post("/addAuthority", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(400, "无权限！");
-    return;
-  }
   let authority_id = ctx.request.body.authority_id;
   let authority_pid = ctx.request.body.authority_pid;
   let authority_title = ctx.request.body.authority_title;
@@ -145,11 +135,6 @@ router.post("/addAuthority", async (ctx, next) => {
 
 // 修改权限
 router.put("/updateAuthority", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(400, "无权限！");
-    return;
-  }
   let authority_id = ctx.request.body.authority_id;
   let authority_title = ctx.request.body.authority_title;
   let authority_name = ctx.request.body.authority_name;
@@ -169,11 +154,6 @@ router.put("/updateAuthority", async (ctx, next) => {
 
 // 删除权限
 router.delete("/deleteAuthority", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(400, "无权限！");
-    return;
-  }
   const authority_id = ctx.request.body.authority_id;
   let result = (await deleteAuthority(authority_id)) as any;
   if (result.affectedRows === 1) {
@@ -185,11 +165,6 @@ router.delete("/deleteAuthority", async (ctx, next) => {
 
 // 查找角色权限
 router.get("/getRoleAuthority", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(400, "无权限查询！");
-    return;
-  }
   const role = ctx.request.query.role;
   let result = (await query(`
     SELECT authority_id FROM role_authority where role_id = '${role}'
@@ -201,17 +176,12 @@ router.get("/getRoleAuthority", async (ctx, next) => {
   if (result.length > 0) {
     ctx.body = formatParamStructure(200, "查询角色权限成功!", { authority });
   } else {
-    ctx.body = formatParamStructure(400, "角色权限尚无!", { authority });
+    ctx.body = formatParamStructure(200, "角色权限尚无!", { authority });
   }
 });
 
 // 增加角色权限
 router.post("/addRoleAuthority", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(400, "无权限！");
-    return;
-  }
   const addParentAuthority = async (
     role_id: number,
     authority: any,
@@ -239,11 +209,16 @@ router.post("/addRoleAuthority", async (ctx, next) => {
       });
     }
     if (role_authority_id.includes(authority.authority_id)) return true;
-    let result = (await query(
-      `insert into role_authority(role_id, authority_id) values('${role_id}', '${authority.authority_id}')`
-    )) as any;
-    return result.affectedRows === 1 ? true : false;
+    try {
+      let result = (await query(
+        `insert into role_authority(role_id, authority_id) values ('${role_id}', '${authority.authority_id}')`
+      )) as any;
+      return result.affectedRows === 1 ? true : false;
+    } catch(err) {
+      console.log(err)
+    }
   };
+
   let role_id = ctx.request.body.role_id;
   let authority = ctx.request.body.authority;
   let RoleAuthorityID = (await query(
@@ -253,8 +228,8 @@ router.post("/addRoleAuthority", async (ctx, next) => {
   RoleAuthorityID.forEach(item => {
     role_authority_id.push(item.authority_id);
   });
-  let addParentResult = addParentAuthority(role_id, authority, role_authority_id);
-  let addAuthorityResult = addRoleAuthority(role_id, authority, role_authority_id);
+  let addParentResult = await addParentAuthority(role_id, authority, role_authority_id);
+  let addAuthorityResult = await addRoleAuthority(role_id, authority, role_authority_id);
   if (addParentResult && addAuthorityResult) {
     ctx.body = formatParamStructure(200, "添加角色权限成功！");
   } else {
@@ -264,11 +239,6 @@ router.post("/addRoleAuthority", async (ctx, next) => {
 
 // 删除角色权限
 router.delete("/deleteRoleAuthority", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(400, "无权限！");
-    return;
-  }
   const deleteRoleAuthority = async (role_id: number, authority: any) => {
     if (authority.hasOwnProperty("children")) {
       authority["children"].forEach(async child => {
@@ -366,11 +336,6 @@ router.get("/getUserAuthority", async (ctx, next) => {
 
 // 查询用户权限ID
 router.get("/getUserAuthorityID", async (ctx, next) => {
-  const userInfo = JWT.verify(ctx);
-  if (userInfo.role_id !== 1) {
-    ctx.body = formatParamStructure(400, "无权限查询！");
-    return;
-  }
   let key = ctx.request.query.key as string;
   let usermark = ctx.request.query.usermark as string;
   let user_authority_id: Array<any> = [];
@@ -570,11 +535,7 @@ router.delete("/deleteUserAuthority", async (ctx, next) => {
   role_authority.forEach((item: any) => {
     role_authority_id.push(item.authority_id);
   });
-  let deleteAuthorityResult = await deleteUserAuthority(
-    usermark,
-    authority,
-    role_authority_id
-  );
+  let deleteAuthorityResult = await deleteUserAuthority(usermark, authority, role_authority_id);
   let { user_authority } = await getUserAuthority(key, usermark);
   user_authority.forEach((item: any) => {
     user_authority_id.push(item.authority_id);

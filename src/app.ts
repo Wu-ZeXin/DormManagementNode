@@ -10,6 +10,7 @@ import { Server } from "http";
 import config from "./config/env";
 import logPrompt from "./middlewares/logPrompt";
 import checkJWT from "./middlewares/checkJWT";
+import checkAuthority from "./middlewares/checkAuthority";
 
 // 引入路由
 import user from "./router/user";
@@ -35,6 +36,7 @@ app.use(
 );
 app.use(logPrompt);
 app.use(checkJWT);
+app.use(checkAuthority);
 
 // 使用路由
 app.use(user.routes());
