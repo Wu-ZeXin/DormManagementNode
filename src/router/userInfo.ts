@@ -152,7 +152,6 @@ router.get("/getStudent", async (ctx, next) => {
     ctx.body = formatParamStructure(403, "无权限查询！");
     return;
   }
-  console.log(ctx.request.query);
   let usermark = ctx.request.query.usermark;
   let name = ctx.request.query.name;
   let college = ctx.request.query.college;

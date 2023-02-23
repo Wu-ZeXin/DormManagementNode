@@ -12,7 +12,7 @@ router.get("/getOption", async (ctx, next) => {
   let selectKey = ctx.request.query.selectKey;
   let result: any;
   if (key === "employee") {
-    if(selectKey === "") {
+    if (selectKey === "") {
       result = (await query(
         `SELECT usermark, name FROM employee where usermark <> 'admin'`
       )) as Array<any>;
@@ -25,14 +25,14 @@ router.get("/getOption", async (ctx, next) => {
     result = (await query(
       `SELECT role_id, role_name FROM role where role_name <> '学生'`
     )) as Array<any>;
-  } else if( key === "college") {
+  } else if (key === "role_authority") {
     result = (await query(
-      `SELECT college_name FROM college`
+      `SELECT role_id, role_name FROM role`
     )) as Array<any>;
-  } else if( key === "dorm_build") {
-    result = (await query(
-      `SELECT dorm_build_name FROM dorm_build`
-    )) as Array<any>;
+  } else if (key === "college") {
+    result = (await query(`SELECT college_name FROM college`)) as Array<any>;
+  } else if (key === "dorm_build") {
+    result = (await query(`SELECT dorm_build_name FROM dorm_build`)) as Array<any>;
   }
   if (result.length > 0) {
     ctx.body = formatParamStructure(200, "获取成功!", { selectOptions: result });

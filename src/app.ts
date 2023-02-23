@@ -16,6 +16,7 @@ import user from "./router/user";
 import authority from "./router/authority";
 import common from "./router/common";
 import userInfo from "./router/userInfo";
+import role from "./router/role";
 
 // 创建服务对象
 const app = new Koa();
@@ -44,6 +45,8 @@ app.use(common.routes());
 app.use(common.allowedMethods());
 app.use(userInfo.routes());
 app.use(userInfo.allowedMethods());
+app.use(role.routes());
+app.use(role.allowedMethods());
 
 // 启动服务
 const runServer = (port: number): Server => {
