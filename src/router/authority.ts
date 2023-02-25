@@ -198,27 +198,17 @@ router.post("/addRoleAuthority", async (ctx, next) => {
     )) as any;
     return result.affectedRows === 1 ? true : false;
   };
-  const addRoleAuthority = async (
-    role_id: number,
-    authority: any,
-    role_authority_id: Array<number>
-  ) => {
+  const addRoleAuthority = (role_id: number, authority: any, role_authority_id: Array<number>) => {
+    let sql: string = "";
     if (authority.hasOwnProperty("children")) {
       authority["children"].forEach(async child => {
-        await addRoleAuthority(role_id, child, role_authority_id);
+        sql += addRoleAuthority(role_id, child, role_authority_id);
       });
     }
-    if (role_authority_id.includes(authority.authority_id)) return true;
-    try {
-      let result = (await query(
-        `insert into role_authority(role_id, authority_id) values ('${role_id}', '${authority.authority_id}')`
-      )) as any;
-      return result.affectedRows === 1 ? true : false;
-    } catch(err) {
-      console.log(err)
-    }
+    if (role_authority_id.includes(authority.authority_id)) return sql;
+    sql += `, ('${role_id}', '${authority.authority_id}')`;
+    return sql;
   };
-
   let role_id = ctx.request.body.role_id;
   let authority = ctx.request.body.authority;
   let RoleAuthorityID = (await query(
@@ -229,8 +219,11 @@ router.post("/addRoleAuthority", async (ctx, next) => {
     role_authority_id.push(item.authority_id);
   });
   let addParentResult = await addParentAuthority(role_id, authority, role_authority_id);
-  let addAuthorityResult = await addRoleAuthority(role_id, authority, role_authority_id);
-  if (addParentResult && addAuthorityResult) {
+  let addAuthoritySQL =
+    "insert into role_authority(role_id, authority_id) values" +
+    addRoleAuthority(role_id, authority, role_authority_id).slice(1);
+  let addAuthorityResult = (await query(addAuthoritySQL)) as any;
+  if (addParentResult && addAuthorityResult.affectedRows > 0) {
     ctx.body = formatParamStructure(200, "添加角色权限成功！");
   } else {
     ctx.body = formatParamStructure(400, "添加角色权限失败！");
@@ -239,16 +232,15 @@ router.post("/addRoleAuthority", async (ctx, next) => {
 
 // 删除角色权限
 router.delete("/deleteRoleAuthority", async (ctx, next) => {
-  const deleteRoleAuthority = async (role_id: number, authority: any) => {
+  const deleteRoleAuthority = (authority: any) => {
+    let sql: string = "";
     if (authority.hasOwnProperty("children")) {
       authority["children"].forEach(async child => {
-        await deleteRoleAuthority(role_id, child);
+        sql += deleteRoleAuthority(child);
       });
     }
-    let result = (await query(`
-      DELETE FROM role_authority where role_id = '${role_id}' and authority_id = '${authority.authority_id}'
-    `)) as any;
-    return result.affectedRows === 1 ? true : false;
+    sql += `, ${authority.authority_id}`;
+    return sql;
   };
   const deleteParentAuthority = async (
     role_id: number,
@@ -288,7 +280,11 @@ router.delete("/deleteRoleAuthority", async (ctx, next) => {
   };
   let role_id = ctx.request.body.role_id;
   let authority = ctx.request.body.authority;
-  let deleteResult = await deleteRoleAuthority(role_id, authority);
+  let deleteAuthoritySQL =
+    `DELETE FROM role_authority where role_id = '${role_id}' and authority_id in (` +
+    deleteRoleAuthority(authority).slice(2) +
+    `)`;
+  let deleteResult = (await query(deleteAuthoritySQL)) as any;
   let RoleAuthorityID = (await query(
     `SELECT authority_id FROM role_authority where role_id = '${role_id}'`
   )) as Array<any>;
@@ -298,7 +294,7 @@ router.delete("/deleteRoleAuthority", async (ctx, next) => {
   });
   let deleteParentResult = await deleteParentAuthority(role_id, authority, role_authority_id);
   ctx.body =
-    deleteResult && deleteParentResult
+    deleteResult.affectedRows > 0 && deleteParentResult
       ? formatParamStructure(200, "删除角色权限成功！")
       : formatParamStructure(400, "删除角色权限失败！");
 });
@@ -360,6 +356,12 @@ router.post("/addUserAuthority", async (ctx, next) => {
   let authority = ctx.request.body.authority;
   let role_authority_id = [];
   let user_authority_id = [];
+  let deleteResult: any = {
+    affectedRows: 0
+  };
+  let insertResult: any = {
+    affectedRows: 0
+  };
 
   const addParentAuthority = async (
     usermark: string,
@@ -385,29 +387,37 @@ router.post("/addUserAuthority", async (ctx, next) => {
     }
     return result.changedRows === 1 || result.affectedRows === 1 ? true : false;
   };
-  const addUserAuthority = async (
+  const addUserAuthority = (
     usermark: string,
     authority: any,
     user_authority_id: Array<number>,
     role_authority_id: Array<number>
   ) => {
+    let deleteAuthoritySQL: string = "";
+    let insertAuthoritySQL: string = "";
     if (authority.hasOwnProperty("children")) {
       authority["children"].forEach(async child => {
-        await addUserAuthority(usermark, child, user_authority_id, role_authority_id);
+        const { deleteAuthoritySQL: childDelete, insertAuthoritySQL: childInsert } =
+          addUserAuthority(usermark, child, user_authority_id, role_authority_id);
+        deleteAuthoritySQL += childDelete;
+        insertAuthoritySQL += childInsert;
       });
     }
-    if (user_authority_id.includes(authority.authority_id)) return true;
-    let result;
-    if (role_authority_id.includes(authority.authority_id)) {
-      result = await query(`
-        DELETE from user_authority where usermark = '${usermark}' and authority_id = '${authority.authority_id}'
-      `);
-    } else {
-      result = await query(
-        `insert into user_authority(usermark, authority_id, status) values('${usermark}', '${authority.authority_id}',  1)`
-      );
+    if (user_authority_id.includes(authority.authority_id)) {
+      return {
+        deleteAuthoritySQL,
+        insertAuthoritySQL
+      };
     }
-    return result.changedRows === 1 || result.affectedRows === 1 ? true : false;
+    if (role_authority_id.includes(authority.authority_id)) {
+      deleteAuthoritySQL += `, ${authority.authority_id}`;
+    } else {
+      insertAuthoritySQL += `, ('${usermark}', '${authority.authority_id}',  1)`;
+    }
+    return {
+      deleteAuthoritySQL,
+      insertAuthoritySQL
+    };
   };
 
   let role_authority = (await query(`
@@ -430,15 +440,30 @@ router.post("/addUserAuthority", async (ctx, next) => {
     user_authority_id,
     role_authority_id
   );
-  let addChildResult = await addUserAuthority(
+  let { deleteAuthoritySQL, insertAuthoritySQL } = addUserAuthority(
     usermark,
     authority,
     user_authority_id,
     role_authority_id
   );
-
-  if (addParentResult && addChildResult) {
-    ctx.body = formatParamStructure(200, "增加用户权限成功！");
+  if (deleteAuthoritySQL !== "") {
+    let deleteSQL =
+      `DELETE FROM user_authority where usermark = '${usermark}' and authority_id in (` +
+      deleteAuthoritySQL.slice(2) +
+      `)`;
+    deleteResult = await query(deleteSQL);
+  }
+  if (insertAuthoritySQL !== "") {
+    let insertSQL =
+      "insert into user_authority(usermark, authority_id, status) values" +
+      insertAuthoritySQL.slice(1);
+    insertResult = await query(insertSQL);
+  }
+  if (addParentResult) {
+    ctx.body =
+      deleteResult.affectedRows > 0 || insertResult.affectedRows > 0
+        ? formatParamStructure(200, "增加用户权限成功！")
+        : formatParamStructure(400, "增加用户权限失败！");
   } else {
     ctx.body = formatParamStructure(400, "增加用户权限失败！");
   }
@@ -451,28 +476,37 @@ router.delete("/deleteUserAuthority", async (ctx, next) => {
   let authority = ctx.request.body.authority;
   let role_authority_id = [];
   let user_authority_id = [];
+  let deleteResult: any = {
+    affectedRows: 0
+  };
+  let insertResult: any = {
+    affectedRows: 0
+  };
 
-  const deleteUserAuthority = async (
+  const deleteUserAuthority = (
     usermark: string,
     authority: any,
     role_authority_id: Array<number>
   ) => {
+    let deleteAuthoritySQL: string = "";
+    let insertAuthoritySQL: string = "";
     if (authority.hasOwnProperty("children")) {
       authority["children"].forEach(async child => {
-        await deleteUserAuthority(usermark, child, role_authority_id);
+        const { deleteAuthoritySQL: childDelete, insertAuthoritySQL: childInsert } =
+          deleteUserAuthority(usermark, child, role_authority_id);
+        deleteAuthoritySQL += childDelete;
+        insertAuthoritySQL += childInsert;
       });
     }
-    let result;
     if (role_authority_id.includes(authority.authority_id)) {
-      result = (await query(
-        `insert into user_authority(usermark, authority_id, status) values('${usermark}', '${authority.authority_id}',  0)`
-      )) as any;
+      insertAuthoritySQL += `, ('${usermark}', '${authority.authority_id}',  0)`;
     } else {
-      result = await query(`
-        DELETE from user_authority where usermark = '${usermark}' and authority_id = '${authority.authority_id}'
-      `);
+      deleteAuthoritySQL += `, ${authority.authority_id}`;
     }
-    return result.changedRows === 1 || result.affectedRows === 1 ? true : false;
+    return {
+      deleteAuthoritySQL,
+      insertAuthoritySQL
+    };
   };
   const deleteParentAuthority = async (
     usermark: string,
@@ -492,7 +526,6 @@ router.delete("/deleteUserAuthority", async (ctx, next) => {
     let isAll = child_authority_id.some(item => {
       return user_authority_id.includes(item);
     });
-    console.log(isAll);
     if (!isAll) {
       let parent_authority = await query(
         `SELECT * from authority where authority_id = '${authority.authority_pid}'`
@@ -535,7 +568,20 @@ router.delete("/deleteUserAuthority", async (ctx, next) => {
   role_authority.forEach((item: any) => {
     role_authority_id.push(item.authority_id);
   });
-  let deleteAuthorityResult = await deleteUserAuthority(usermark, authority, role_authority_id);
+  let { deleteAuthoritySQL, insertAuthoritySQL } = deleteUserAuthority(usermark, authority, role_authority_id);
+  if (deleteAuthoritySQL !== "") {
+    let deleteSQL =
+      `DELETE FROM user_authority where usermark = '${usermark}' and authority_id in (` +
+      deleteAuthoritySQL.slice(2) +
+      `)`;
+    deleteResult = await query(deleteSQL);
+  }
+  if (insertAuthoritySQL !== "") {
+    let insertSQL =
+      "insert into user_authority(usermark, authority_id, status) values" +
+      insertAuthoritySQL.slice(1);
+    insertResult = await query(insertSQL);
+  }
   let { user_authority } = await getUserAuthority(key, usermark);
   user_authority.forEach((item: any) => {
     user_authority_id.push(item.authority_id);
@@ -547,10 +593,14 @@ router.delete("/deleteUserAuthority", async (ctx, next) => {
     user_authority_id,
     role_authority_id
   );
-  ctx.body =
-    deleteAuthorityResult && deleteParentResult
-      ? formatParamStructure(200, "删除用户权限成功！")
-      : formatParamStructure(400, "删除用户权限失败！");
+  if(deleteParentResult) {
+    ctx.body =
+      deleteResult.affectedRows > 0 || insertResult.affectedRows > 0
+        ? formatParamStructure(200, "删除用户权限成功！")
+        : formatParamStructure(400, "删除用户权限失败！");
+  } else {
+    ctx.body = formatParamStructure(400, "删除用户权限失败！");
+  }
 });
 
 export default router;
