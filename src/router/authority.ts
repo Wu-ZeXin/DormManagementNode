@@ -23,7 +23,7 @@ const integrationAuthority = (authority_set: Array<any>, authority: any) => {
 
 const deleteAuthority = async (authority_id: number) => {
   let childAuthority = (await query(
-    `SELECT * FROM authority where authority_pid = '${authority_id}'`
+    `SELECT authority_id FROM authority where authority_pid = '${authority_id}'`
   )) as Array<any>;
   if (childAuthority.length !== 0) {
     childAuthority.forEach(async item => {
@@ -190,7 +190,7 @@ router.post("/addRoleAuthority", async (ctx, next) => {
     if (role_authority_id.includes(authority.authority_pid) || authority.authority_pid === 0)
       return true;
     let parent_authority = await query(
-      `SELECT * FROM authority where authority_id = '${authority.authority_pid}'`
+      `SELECT authority_pid FROM authority where authority_id = '${authority.authority_pid}'`
     );
     await addParentAuthority(role_id, parent_authority[0], role_authority_id);
     let result = (await query(
@@ -260,7 +260,7 @@ router.delete("/deleteRoleAuthority", async (ctx, next) => {
     });
     if (!isAll) {
       let parent_authority = await query(
-        `SELECT * from authority where authority_id = '${authority.authority_pid}'`
+        `SELECT authority_pid from authority where authority_id = '${authority.authority_pid}'`
       );
       let result = (await query(`
         DELETE FROM role_authority where role_id = '${role_id}' and authority_id = '${authority.authority_pid}'
@@ -372,7 +372,7 @@ router.post("/addUserAuthority", async (ctx, next) => {
     if (user_authority_id.includes(authority.authority_pid) || authority.authority_pid === 0)
       return true;
     let parent_authority = await query(
-      `SELECT * FROM authority where authority_id = '${authority.authority_pid}'`
+      `SELECT authority_pid FROM authority where authority_id = '${authority.authority_pid}'`
     );
     await addParentAuthority(usermark, parent_authority[0], user_authority_id, role_authority_id);
     let result;
@@ -528,7 +528,7 @@ router.delete("/deleteUserAuthority", async (ctx, next) => {
     });
     if (!isAll) {
       let parent_authority = await query(
-        `SELECT * from authority where authority_id = '${authority.authority_pid}'`
+        `SELECT authority_pid from authority where authority_id = '${authority.authority_pid}'`
       );
       let result;
       if (role_authority_id.includes(authority.authority_pid)) {

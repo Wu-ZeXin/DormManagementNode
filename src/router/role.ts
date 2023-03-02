@@ -44,7 +44,7 @@ router.put("/updateRole", async (ctx, next) => {
 router.delete("/deleteRole", async (ctx, next) => {
   let role_id = ctx.request.body.role_id;
   let result = (await query(`DELETE from role where role_id = '${role_id}'`)) as any;
-  if ((result.changedRows = 1)) {
+  if (result.changedRows === 1) {
     ctx.body = formatParamStructure(200, "删除角色成功！");
   } else {
     ctx.body = formatParamStructure(400, "删除角色失败！");

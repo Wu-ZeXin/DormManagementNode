@@ -18,6 +18,8 @@ import authority from "./router/authority";
 import common from "./router/common";
 import userInfo from "./router/userInfo";
 import role from "./router/role";
+import dormBuild from "./router/dormBuild";
+import dorm from "./router/dorm";
 
 // 创建服务对象
 const app = new Koa();
@@ -49,6 +51,10 @@ app.use(userInfo.routes());
 app.use(userInfo.allowedMethods());
 app.use(role.routes());
 app.use(role.allowedMethods());
+app.use(dormBuild.routes());
+app.use(dormBuild.allowedMethods());
+app.use(dorm.routes());
+app.use(dorm.allowedMethods());
 
 // 启动服务
 const runServer = (port: number): Server => {

@@ -144,7 +144,7 @@ router.put("/updateUserInfo", async (ctx, next) => {
   if (result.changedRows == 1 && result.affectedRows == 1) {
     ctx.body = formatParamStructure(200, "更新成功！");
   } else if (result.changedRows == 0 && result.affectedRows == 1) {
-    ctx.body = formatParamStructure(100, "与原数据一致");
+    ctx.body = formatParamStructure(200, "与原数据一致");
   } else if (result.changedRows == 0 && result.affectedRows == 0) {
     ctx.body = formatParamStructure(400, "更新失败！");
   }

@@ -26,13 +26,28 @@ router.get("/getOption", async (ctx, next) => {
       `SELECT role_id, role_name FROM role where role_name <> '学生'`
     )) as Array<any>;
   } else if (key === "role_authority") {
-    result = (await query(
-      `SELECT role_id, role_name FROM role`
-    )) as Array<any>;
+    result = (await query(`SELECT role_id, role_name FROM role`)) as Array<any>;
   } else if (key === "college") {
     result = (await query(`SELECT college_name FROM college`)) as Array<any>;
   } else if (key === "dorm_build") {
     result = (await query(`SELECT dorm_build_name FROM dorm_build`)) as Array<any>;
+  } else if (key === "dorm_manager") {
+    result = (await query(`SELECT usermark, name FROM employee where role = 3`)) as Array<any>;
+  } else if (key === "dorm") {
+    let data: any;
+    if (typeof selectKey === "undefined") {
+      const userInfo = JWT.verify(ctx);
+      data = await query(
+        `SELECT dorm_build_id FROM dorm_build where dorm_build_manager = '${userInfo.usermark}'`
+      );
+    } else {
+      data = await query(
+        `SELECT dorm_build_id FROM dorm_build where dorm_build_name = '${selectKey}'`
+      );
+    }
+    result = (await query(
+      `SELECT dorm_number FROM dorm where dorm_build_id = '${data[0].dorm_build_id}' and dorm_population < 6`
+    )) as Array<any>;
   }
   if (result.length > 0) {
     ctx.body = formatParamStructure(200, "获取成功!", { selectOptions: result });

@@ -156,24 +156,33 @@ router.get("/getStudent", async (ctx, next) => {
     `)) as Array<any>;
   } else {
     let sql = "";
-    Object.keys(dataObj).filter((key: string) => {
-      return dataObj[key] !== "";
-    }).forEach((value: string, index: number) => {
-      if(index === 0) {
-        sql += `${value} = '${dataObj[value]}' `;
-      } else {
-        sql += `and ${value} = '${dataObj[value]}' `;
-      }
-    })
+    Object.keys(dataObj)
+      .filter((key: string) => {
+        return dataObj[key] !== "";
+      })
+      .forEach((value: string, index: number) => {
+        if (index === 0) {
+          sql += `${value} = '${dataObj[value]}' `;
+        } else {
+          sql += `and ${value} = '${dataObj[value]}' `;
+        }
+      });
     result = (await query(
       `SELECT usermark, name, sex, telephone, email, college, class, dorm, dorm_build,
       father, father_telephone, mother, mother_telephone, counselor, counselor_telephone
-      FROM student where ` + sql + "and state = 1"
+      FROM student where ` +
+        sql +
+        "and state = 1"
     )) as Array<any>;
     total = result.length;
-    result = (await query(`SELECT usermark, name, sex, telephone, email, college, class, dorm, dorm_build,
+    result = (await query(
+      `SELECT usermark, name, sex, telephone, email, college, class, dorm, dorm_build,
     father, father_telephone, mother, mother_telephone, counselor, counselor_telephone
-    FROM student where ` + sql + "and state = 1 " + `limit ${topPageIndex},${pageSize}`)) as Array<any>;
+    FROM student where ` +
+        sql +
+        "and state = 1 " +
+        `limit ${topPageIndex},${pageSize}`
+    )) as Array<any>;
   }
   if (result.length > 0) {
     ctx.body = formatParamStructure(200, "获取学生信息成功!", { total, studentData: result });
@@ -185,6 +194,9 @@ router.get("/getStudent", async (ctx, next) => {
 // 删除学生信息
 router.delete("/deleteStudent", async (ctx, next) => {
   let usermark = ctx.request.body.usermark;
+  let dorm_population = await query(`
+    UPDATE student s, dorm_build db, dorm d SET d.dorm_population = d.dorm_population-1 where s.usermark = '${usermark}' and s.dorm_build = db.dorm_build_name and db.dorm_build_id = d.dorm_build_id and s.dorm = d.dorm_number
+    `);
   let result = (await query(`update student set state = 0 where usermark = '${usermark}'`)) as any;
   if (result.changedRows == 1) {
     ctx.body = formatParamStructure(200, "删除学生信息成功!");
@@ -210,7 +222,14 @@ router.put("/updateStudent", async (ctx, next) => {
   let mother_telephone = ctx.request.body.mother_telephone;
   let counselor = ctx.request.body.counselor;
   let counselor_telephone = ctx.request.body.counselor_telephone;
+  let changeDorm: any = { changedRows: 0 };
 
+  let before_dorm = await query(`SELECT dorm from student where usermark = '${usermark}'`);
+  if (before_dorm[0].dorm !== dorm) {
+    changeDorm = await query(`
+      UPDATE student s, dorm_build db, dorm d SET d.dorm_population = d.dorm_population-1 where s.usermark = '${usermark}' and s.dorm_build = db.dorm_build_name and db.dorm_build_id = d.dorm_build_id and s.dorm = d.dorm_number
+    `);
+  }
   let result = (await query(
     `update student set
       name = '${name}', sex = '${sex}', telephone = '${telephone}', email = '${email}', college = '${college}', class = '${grade}',
@@ -218,6 +237,11 @@ router.put("/updateStudent", async (ctx, next) => {
       mother_telephone = '${mother_telephone}', counselor = '${counselor}', counselor_telephone = '${counselor_telephone}'
     where usermark = '${usermark}'`
   )) as any;
+  if (changeDorm.changedRows === 1) {
+    await query(`
+      UPDATE student s, dorm_build db, dorm d SET d.dorm_population = d.dorm_population+1 where s.usermark = '${usermark}' and s.dorm_build = db.dorm_build_name and db.dorm_build_id = d.dorm_build_id and s.dorm = d.dorm_number
+    `);
+  }
   if (result.changedRows == 1 && result.affectedRows == 1) {
     ctx.body = formatParamStructure(200, "修改学生信息成功！");
   } else if (result.changedRows == 0 && result.affectedRows == 1) {
@@ -253,6 +277,9 @@ router.post("/addStudent", async (ctx, next) => {
     `insert into student(usermark, password, name, sex, telephone, email, college, class, dorm, dorm_build, counselor, counselor_telephone, role, state)
     values('${usermark}', '${password}', '${name}', '${sex}', '${telephone}', '${email}', '${college}', '${grade}', '${dorm}', '${dorm_build}', '${counselor}', '${counselor_telephone}', 5, 1)`
   )) as any;
+  await query(`
+    UPDATE dorm_build db, dorm d SET d.dorm_population = d.dorm_population+1 where db.dorm_build_name = '${dorm_build}' and db.dorm_build_id = d.dorm_build_id and d.dorm_number = '${dorm}'
+  `);
   if (result.affectedRows === 1) {
     ctx.body = formatParamStructure(200, "添加学生信息成功！");
   } else {
