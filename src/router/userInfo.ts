@@ -30,30 +30,35 @@ router.get("/getEmployee", async (ctx, next) => {
   } else {
     if (usermark === "" && role !== "") {
       result = (await query(`
-      SELECT a.usermark, a.name, a.sex, a.telephone, a.email, b.role_name
-      from (employee a)
-      INNER JOIN (role b)
-      on a.role = '${role}' and a.state = 1 and a.role = b.role_id
-      limit ${topPageIndex},${pageSize}
-    `)) as Array<any>;
+        SELECT COUNT(*) FROM employee where role = '${role}' and state = 1
+      `)) as Array<any>;
+      total = result[0]["COUNT(*)"];
+      result = (await query(`
+        SELECT a.usermark, a.name, a.sex, a.telephone, a.email, b.role_name
+        from (employee a)
+        INNER JOIN (role b)
+        on a.role = '${role}' and a.state = 1 and a.role = b.role_id
+        limit ${topPageIndex},${pageSize}
+      `)) as Array<any>;
     } else if (role === "" && usermark !== "") {
       result = (await query(`
-      SELECT a.usermark, a.name, a.sex, a.telephone, a.email, b.role_name
-      from (employee a)
-      INNER JOIN (role b)
-      on a.usermark = '${usermark}' and a.state = 1 and a.role = b.role_id
-      limit ${topPageIndex},${pageSize}
-    `)) as Array<any>;
+        SELECT a.usermark, a.name, a.sex, a.telephone, a.email, b.role_name
+        from (employee a)
+        INNER JOIN (role b)
+        on a.usermark = '${usermark}' and a.state = 1 and a.role = b.role_id
+        limit ${topPageIndex},${pageSize}
+      `)) as Array<any>;
+      total = result.length;
     } else {
       result = (await query(`
-      SELECT a.usermark, a.name, a.sex, a.telephone, a.email, b.role_name
-      from (employee a)
-      INNER JOIN (role b)
-      on a.usermark = '${usermark}' and a.role = '${role}' and a.state = 1 and a.role = b.role_id
-      limit ${topPageIndex},${pageSize}
-    `)) as Array<any>;
+        SELECT a.usermark, a.name, a.sex, a.telephone, a.email, b.role_name
+        from (employee a)
+        INNER JOIN (role b)
+        on a.usermark = '${usermark}' and a.role = '${role}' and a.state = 1 and a.role = b.role_id
+        limit ${topPageIndex},${pageSize}
+      `)) as Array<any>;
+      total = result.length;
     }
-    total = result.length;
   }
   if (result.length > 0) {
     ctx.body = formatParamStructure(200, "获取职工信息成功!", { total, employeeData: result });
