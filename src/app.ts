@@ -21,6 +21,7 @@ import role from "./router/role";
 import dormBuild from "./router/dormBuild";
 import dorm from "./router/dorm";
 import logistics from "./router/logistics";
+import score from "./router/score";
 
 // 创建服务对象
 const app = new Koa();
@@ -58,6 +59,8 @@ app.use(dorm.routes());
 app.use(dorm.allowedMethods());
 app.use(logistics.routes());
 app.use(logistics.allowedMethods());
+app.use(score.routes());
+app.use(score.allowedMethods());
 
 // 启动服务
 const runServer = (port: number): Server => {

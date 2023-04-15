@@ -5,6 +5,11 @@ export const formatParamStructure = (code: number, msg: string, data: Record<str
     data: data
   };
 };
+export function getCurrentMonth() {
+  let date = new Date(); //当前时间
+  let month = date.getMonth() < 9 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1; //月
+  return date.getFullYear() + "-" + month;
+}
 
 export function getCurrentTime() {
   function zeroFill(i) {
